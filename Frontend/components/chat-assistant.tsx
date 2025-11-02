@@ -5,6 +5,7 @@ import { Send, Trash2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { askQuestion } from "@/lib/apiService" // <-- 1. IMPORT THE API FUNCTION
 
 interface Message {
   id: string
@@ -13,12 +14,7 @@ interface Message {
   citations?: any[]
 }
 
-interface ChatAssistantProps {
-  activeFile: any
-  pinnedSnippets: any[]
-  chatContext: string
-  onRemoveSnippet: (snippet: any) => void
-}
+// ... (interface ChatAssistantProps remains the same)
 
 export default function ChatAssistant({
   activeFile,
@@ -30,7 +26,7 @@ export default function ChatAssistant({
     {
       id: "1",
       role: "assistant",
-      content: "Hi! I'm your regulatory intelligence assistant. Ask me anything about the documents you've uploaded.",
+      content: "Hi! I'm your regulatory intelligence assistant. Ask me anything about the documents in the knowledge base.",
       citations: [],
     },
   ])
@@ -44,8 +40,9 @@ export default function ChatAssistant({
     }
   }, [messages])
 
-  const handleSendMessage = () => {
-    if (!input.trim()) return
+  // --- 2. THIS IS THE MAIN LOGIC CHANGE ---
+  const handleSendMessage = async () => {
+    if (!input.trim() || loading) return
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -54,21 +51,35 @@ export default function ChatAssistant({
     }
 
     setMessages((prev) => [...prev, userMessage])
+    const currentInput = input;
     setInput("")
     setLoading(true)
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      // Call the real backend API
+      const response = await askQuestion(currentInput);
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `Based on the documents, ${input.toLowerCase().includes("impact") ? "the regulatory changes would have significant impact on your portfolio." : "I can provide detailed insights on this matter. The evidence suggests..."}`,
-        citations: [{ chunk_id: "chunk-1", page: 2, excerpt: "Key regulatory requirement..." }],
+        content: response.answer,
+        citations: response.citations, // Pass the real citations
       }
       setMessages((prev) => [...prev, assistantMessage])
+
+    } catch (error) {
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: `Sorry, I ran into an error. ${error instanceof Error ? error.message : "Please try again."}`,
+      }
+      setMessages((prev) => [...prev, errorMessage])
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }
+
+  // ... (the rest of the component remains the same) ...
 
   const examplePrompts = [
     "Summarize the impact",
@@ -124,9 +135,13 @@ export default function ChatAssistant({
                 }`}
               >
                 <p>{message.content}</p>
+                {/* Updated Citation rendering */}
                 {message.citations && message.citations.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-border/50 text-xs opacity-75">
-                    <p>Sources: {message.citations.map((c) => c.chunk_id).join(", ")}</p>
+                    <p className="font-semibold">Sources:</p>
+                    {message.citations.map((c, index) => (
+                        <p key={index} className="truncate"> - {c.retrievedReferences?.[0]?.location?.s3Location?.uri || 'Unknown'}</p>
+                    ))}
                   </div>
                 )}
               </div>
@@ -171,7 +186,7 @@ export default function ChatAssistant({
       <div className="border-t border-border bg-card px-4 py-3 space-y-2">
         <div className="flex gap-2">
           <Input
-            placeholder="Ask about this document..."
+            placeholder="Ask a question..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
