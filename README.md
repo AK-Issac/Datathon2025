@@ -6,11 +6,12 @@
 ![Static Badge](https://img.shields.io/badge/Datathon-2025-blue?style=for-the-badge)
 ![Static Badge](https://img.shields.io/badge/Catégorie-Intelligence_Artificielle-orange?style=for-the-badge)
 ![Static Badge](https://img.shields.io/badge/Équipe-28-success?style=for-the-badge)
-![Next.js](https://img.shields.io/badge/Frontend-Next.js-blue?logo=nextdotjs)
-![Flask](https://img.shields.io/badge/Backend-Flask-lightgrey?logo=flask)
-![AWS](https://img.shields.io/badge/Cloud-AWS-orange?logo=amazonaws)
-![Hackathon](https://img.shields.io/badge/Projet-Datathon%202025%20PolyFinances-success?logo=hackclub)
-![License](https://img.shields.io/badge/Licence-MIT-green)
+![Next.js](https://img.shields.io/badge/Frontend-Next.js-blue?style=for-the-badge&logo=nextdotjs)
+![Flask](https://img.shields.io/badge/Backend-Flask-lightgrey?style=for-the-badge&logo=flask)
+![AWS](https://img.shields.io/badge/Cloud-AWS-orange?style=for-the-badge&logo=amazonaws)
+![Hackathon](https://img.shields.io/badge/Projet-Datathon%202025%20PolyFinances-success?style=for-the-badge&logo=hackclub)
+![License](https://img.shields.io/badge/Licence-MIT-green?style=for-the-badge)
+
 
 </div>
 
