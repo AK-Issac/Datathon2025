@@ -7,3 +7,6 @@ load_dotenv()
 class Config:
     """Holds all configuration variables for the application."""
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+
+#nothing
