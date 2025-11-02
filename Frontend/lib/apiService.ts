@@ -1,7 +1,7 @@
 // lib/apiService.ts
 
-const BASE_URL = 'http://localhost:5000/api';
-//const BASE_URL = 'http://flask-backend.us-west-2.elasticbeanstalk.com/'
+
+const BASE_URL = 'http://flask-backend.us-west-2.elasticbeanstalk.com/'
 
 /**
  * Envoie un fichier ET son ID unique généré par le frontend au backend Flask.
