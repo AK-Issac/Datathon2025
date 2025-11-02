@@ -97,4 +97,3 @@ Merci à **PolyFinances** et à l’organisation du **Datathon 2025** pour cette
 👨‍💻 *Projet conçu avec passion par l’Équipe #28 — Datathon 2025 POLYFINANCES*
 
 </div>
-```
