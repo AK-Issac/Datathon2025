@@ -21,7 +21,9 @@ jobs:
         run: pip install -r Backend/requirements.txt
 
       - name: Zip backend for deployment
-        run: zip -r backend-deploy.zip Backend -x "*.git*" "*.venv*" "__pycache__/*" "tests/*"
+        run: |
+          cd Backend
+          zip -r ../backend-deploy.zip . -x "*.git*" "*.venv*" "__pycache__/*" "tests/*"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2

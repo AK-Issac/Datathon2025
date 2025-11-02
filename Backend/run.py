@@ -1,9 +1,6 @@
 # /Backend/run.py
 
 from app import create_app
-from dotenv import load_dotenv
-
-load_dotenv()
 
 # Create the Flask app instance using our factory
 app = create_app()
