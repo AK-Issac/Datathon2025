@@ -22,4 +22,8 @@ def create_app():
     from .routes import api_blueprint
     app.register_blueprint(api_blueprint, url_prefix='/api')
     
+    @app.route("/health")
+    def health():
+        return "OK", 200
+
     return app
