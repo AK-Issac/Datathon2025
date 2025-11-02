@@ -1,7 +1,7 @@
 import boto3
 import os
 import sys
-import time
+import time 
 
 # AWS credentials
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
