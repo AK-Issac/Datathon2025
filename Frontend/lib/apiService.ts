@@ -5,8 +5,8 @@
 // - En production, Vercel fournira la valeur via les "Environment Variables".
 // - En local, si vous n'avez pas de fichier .env.local, il utilisera la valeur par défaut.
 // La valeur par défaut est maintenant l'URL HTTPS de votre backend déployé, ce qui résout le problème de "Mixed Content".
-//const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://flask-backend.us-west-2.elasticbeanstalk.com/api';
-const BASE_URL = 'http://localhost:5000/api';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://flask-backend.us-west-2.elasticbeanstalk.com/api';
+// const BASE_URL = 'http://localhost:5000/api';
 
 /**
  * Envoie un fichier ET son ID unique généré par le frontend au backend Flask.
