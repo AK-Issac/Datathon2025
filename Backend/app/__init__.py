@@ -22,4 +22,4 @@ def create_app():
     def health():
         return "OK", 200
 
-    return apps
+    return app
