@@ -19,7 +19,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd backend
+          cd Backend
           pip install -r requirements.txt
 
       - name: Zip backend for deployment
