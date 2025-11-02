@@ -18,14 +18,10 @@ jobs:
           python-version: "3.10"
 
       - name: Install dependencies
-        run: |
-          cd Backend
-          pip install -r requirements.txt
+        run: pip install -r Backend/requirements.txt
 
       - name: Zip backend for deployment
-        run: |
-          cd backend
-          zip -r ../backend-deploy.zip . -x "*.git*" "*.venv*" "__pycache__/*" "tests/*"
+        run: zip -r backend-deploy.zip Backend -x "*.git*" "*.venv*" "__pycache__/*" "tests/*"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
