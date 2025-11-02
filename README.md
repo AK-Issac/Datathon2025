@@ -1,7 +1,7 @@
 <div align="center">
 
 # 🏦 Datathon 2025 POLYFINANCES  
-## **AI Legal Document Analyzer**
+# 🐍 S3rpent  
 
 ![Static Badge](https://img.shields.io/badge/Datathon-2025-blue?style=for-the-badge)
 ![Static Badge](https://img.shields.io/badge/Catégorie-Intelligence_Artificielle-orange?style=for-the-badge)
