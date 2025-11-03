@@ -4,8 +4,8 @@
 // Cette ligne est la clé pour que votre application fonctionne en local ET sur Vercel.
 // 1. Elle essaie de lire la variable d'environnement 'NEXT_PUBLIC_API_URL' (que vous configurez sur Vercel).
 // 2. Si elle ne la trouve pas (parce que vous êtes en local), elle utilise 'http://localhost:5000/api' par défaut.
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-//const BASE_URL = 'http://localhost:5000/api';
+// const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const BASE_URL = 'http://localhost:5000/api';
 /**
  * Envoie un fichier ET son ID unique généré par le frontend au backend Flask.
  * @param file Le fichier sélectionné par l'utilisateur.
