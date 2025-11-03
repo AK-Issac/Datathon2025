@@ -2,50 +2,92 @@
 
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import TopBar from "./top-bar"
 import FileListSidebar from "./file-list-sidebar"
 import ChatAssistant from "./chat-assistant"
 import UploadModal from "./upload-modal"
 import ProcessingUI from "./processing-ui"
 import ResultsDashboard from "./results-dashboard"
-import EvidenceModal from "./evidence-modal"
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable"
-import { ScrollArea } from "@/components/ui/scroll-area" // <-- Import ScrollArea
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Upload } from "lucide-react"
 
+import { ReportRecord } from "@/lib/types"
+
 interface WorkspaceProps {
-  state: "empty" | "processing" | "results" | "error"
-  data: any
+  reports: ReportRecord[]
+  activeReportId: string | null
+  onSelectReport: (reportId: string) => void
   onUpload: (files: File[]) => void
   onNewAnalysis: () => void
 }
 
-// A new sub-component for the initial, empty state view
-function InitialUploadZone({ onUploadClick }: { onUploadClick: () => void }) {
+function mapStatusToSidebar(status: ReportStatus): "processed" | "processing" | "failed" {
+  if (status === "results") return "processed"
+  if (status === "processing") return "processing"
+  return "failed"
+}
+
+type SidebarFile = {
+  id: string
+  name: string
+  type: string
+  timestamp: Date
+  status: "processed" | "processing" | "failed"
+  evidenceCount: number
+  importance: number
+}
+
+function InitialUploadZone({ onUploadClick, hasReports }: { onUploadClick: () => void; hasReports: boolean }) {
   return (
     <div className="flex h-full flex-col items-center justify-center bg-background p-12 text-center">
-      <Upload className="h-12 w-12 text-muted-foreground mb-4" />
-      <h2 className="text-2xl font-semibold text-foreground mb-2">Start a New Analysis</h2>
-      <p className="text-muted-foreground mb-6">Upload regulatory documents to begin.</p>
+      <Upload className="mb-4 h-12 w-12 text-muted-foreground" />
+      <h2 className="mb-2 text-2xl font-semibold text-foreground">Start a New Analysis</h2>
+      <p className="mb-6 text-muted-foreground">
+        {hasReports ? "Select an existing report from the sidebar or upload more documents." : "Upload regulatory documents to begin."}
+      </p>
       <button
         onClick={onUploadClick}
-        className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
+        className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
       >
         <Upload className="h-5 w-5" />
         Upload Documents
       </button>
     </div>
-  );
+  )
 }
 
-export default function Workspace({ state, data, onUpload, onNewAnalysis }: WorkspaceProps) {
-  const [activeFile, setActiveFile] = useState<any>(null)
+export default function Workspace({ reports, activeReportId, onSelectReport, onUpload, onNewAnalysis }: WorkspaceProps) {
   const [pinnedSnippets, setPinnedSnippets] = useState<any[]>([])
-  const [chatContext, setChatContext] = useState<string>("")
+  const [chatContext] = useState<string>("")
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
-  const [evidenceModalOpen, setEvidenceModalOpen] = useState(false)
-  const [selectedCompany, setSelectedCompany] = useState<any>(null)
+
+  const filesForSidebar = useMemo<SidebarFile[]>(() => {
+    return reports.map((report) => ({
+      id: report.id,
+      name: report.name,
+      type: "report",
+      timestamp: new Date(report.uploadedAt),
+      status: mapStatusToSidebar(report.status),
+      evidenceCount: report.data?.all_companies?.length ?? 0,
+      importance: Math.abs(report.data?.portfolio_impact_score ?? 0),
+    }))
+  }, [reports])
+
+  const activeReport = useMemo(() => reports.find((report) => report.id === activeReportId) ?? null, [reports, activeReportId])
+  const activeFile = useMemo(() => filesForSidebar.find((file) => file.id === activeReportId) ?? null, [filesForSidebar, activeReportId])
+
+  const workspaceState: "empty" | "processing" | "results" | "error" = (() => {
+    if (!activeReport) return "empty"
+    if (activeReport.status === "processing") return "processing"
+    if (activeReport.status === "results") return "results"
+    return "error"
+  })()
+
+  console.log("Workspace State:", { activeReport, workspaceState });
+
+  const topBarState = activeReport ? workspaceState : reports.length > 0 ? "results" : "empty"
 
   const handlePinSnippet = (snippet: any) => {
     setPinnedSnippets((prev) => {
@@ -54,46 +96,48 @@ export default function Workspace({ state, data, onUpload, onNewAnalysis }: Work
     })
   }
 
-  const handleAddToChatContext = (text: string) => setChatContext(text)
-
-  const handleCompanySelect = (company: any) => {
-    setSelectedCompany(company)
-    setEvidenceModalOpen(true)
-  }
-
-  // Renders the content of the central panel based on the current state
   const renderMainPanel = () => {
-    switch(state) {
+    switch (workspaceState) {
       case "processing":
-        return <ProcessingUI />;
+        return <ProcessingUI />
       case "results":
-        return <ResultsDashboard data={data} onCompanySelect={handleCompanySelect} />;
+        return <ResultsDashboard reports={reports} activeFile={activeFile} />
       case "error":
-        // You can create a more detailed error component here
-        return <div className="p-8 text-center text-red-500">Analysis Failed. Please start a new analysis.</div>;
+        return (
+          <div className="p-8 text-center text-red-500">
+            {activeReport?.error || "Analysis failed. Please start a new analysis."}
+          </div>
+        )
       case "empty":
       default:
-        return <InitialUploadZone onUploadClick={() => setUploadModalOpen(true)} />;
+        return <InitialUploadZone onUploadClick={() => setUploadModalOpen(true)} hasReports={reports.length > 0} />
     }
   }
 
-  const mockFiles = [
-    { id: "1", name: "EU_AI_Regulation_2024.pdf", type: "pdf", timestamp: new Date(Date.now() - 3600000), status: "processed", evidenceCount: 12, importance: 9.5 },
-    { id: "2", name: "White_House_Executive_Order.pdf", type: "pdf", timestamp: new Date(Date.now() - 7200000), status: state === 'processing' ? 'processing' : 'processed', evidenceCount: 0, importance: 8.2 },
-  ];
-
   return (
     <div className="flex h-screen flex-col">
-      <TopBar onNewAnalysis={onNewAnalysis} onUpload={() => setUploadModalOpen(true)} state={state} />
+      <TopBar
+        onNewAnalysis={() => {
+          onNewAnalysis()
+          setUploadModalOpen(true)
+        }}
+        onUpload={() => setUploadModalOpen(true)}
+        state={topBarState}
+      />
       <ResizablePanelGroup direction="horizontal" className="flex-1">
         <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
-          <FileListSidebar files={mockFiles} activeFile={activeFile} onFileSelect={setActiveFile} onUpload={onUpload} />
+          <FileListSidebar
+            files={filesForSidebar}
+            activeFile={activeFile}
+            onFileSelect={(file) => onSelectReport(file.id)}
+            onUpload={onUpload}
+          />
         </ResizablePanel>
 
         <ResizableHandle />
 
         <ResizablePanel defaultSize={50} minSize={30}>
-          <ScrollArea className="h-full"> {/* <-- WRAP IN SCROLL AREA */}
+          <ScrollArea className="h-full">
             {renderMainPanel()}
           </ScrollArea>
         </ResizablePanel>
@@ -110,9 +154,6 @@ export default function Workspace({ state, data, onUpload, onNewAnalysis }: Work
         </ResizablePanel>
       </ResizablePanelGroup>
       <UploadModal open={uploadModalOpen} onOpenChange={setUploadModalOpen} onUpload={onUpload} />
-      {selectedCompany && (
-        <EvidenceModal isOpen={evidenceModalOpen} onClose={() => setEvidenceModalOpen(false)} company={selectedCompany} />
-      )}
     </div>
   )
 }

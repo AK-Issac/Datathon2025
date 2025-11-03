@@ -64,7 +64,9 @@ export async function checkAnalysisStatus(documentId: string) {
     }
   }
   
-  return response.json();
+  const statusResponse = await response.json();
+  console.log("Raw Status Response:", statusResponse);
+  return statusResponse;
 }
 
 /**

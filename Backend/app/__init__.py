@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 def create_app():
     load_dotenv()
     app = Flask(__name__)
+    app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # Cap uploads at 50MB to mirror frontend guidance
 
     # Assurez-vous que cette configuration est bien en place
     origins = [

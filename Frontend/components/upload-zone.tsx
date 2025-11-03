@@ -59,12 +59,12 @@ export default function UploadZone({ onUpload }: UploadZoneProps) {
         >
           <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
           <h2 className="mt-4 text-2xl font-semibold">Upload Regulatory Document</h2>
-          <p className="mt-2 text-muted-foreground">Drag and drop your PDF, TXT, HTML, or DOCX file here</p>
+          <p className="mt-2 text-muted-foreground">Drag and drop your PDF, TXT, HTML, DOCX, or XML file here</p>
           <p className="mt-4 text-xs text-muted-foreground">Maximum file size: 50MB</p>
           <div className="mt-6 flex items-center justify-center gap-2">
             <input
               type="file"
-              accept=".pdf,.txt,.html,.docx"
+              accept=".pdf,.txt,.html,.docx,.xml"
               onChange={handleFileInput}
               className="hidden"
               id="file-input"

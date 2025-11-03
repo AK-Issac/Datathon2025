@@ -18,7 +18,7 @@ export default function UploadModal({ open, onOpenChange, onUpload }: UploadModa
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const acceptedTypes = [".pdf", ".txt", ".html", ".docx"]
+  const acceptedTypes = [".pdf", ".txt", ".html", ".docx", ".xml"]
   const maxSize = 50 * 1024 * 1024 // 50MB
 
   const handleDrag = (e: React.DragEvent) => {
@@ -82,7 +82,7 @@ export default function UploadModal({ open, onOpenChange, onUpload }: UploadModa
           >
             <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
             <p className="text-sm font-medium text-foreground mb-1">Drag files here or click to browse</p>
-            <p className="text-xs text-muted-foreground mb-4">PDF, TXT, HTML, or DOCX • Max 50MB each</p>
+            <p className="text-xs text-muted-foreground mb-4">PDF, TXT, HTML, DOCX, or XML • Max 50MB each</p>
             <input
               ref={fileInputRef}
               type="file"

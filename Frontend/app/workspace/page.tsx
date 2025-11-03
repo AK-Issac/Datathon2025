@@ -2,73 +2,162 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
-import Workspace from "@/components/workspace"
+import { useEffect, useRef, useState } from "react"
+import Workspace, { type ReportRecord } from "@/components/workspace"
 import { uploadAndStartAnalysis, checkAnalysisStatus } from "@/lib/apiService"
 
+type PollingRegistry = Record<string, number>
+
 export default function WorkspacePage() {
-  const [analysisState, setAnalysisState] = useState<"empty" | "processing" | "results" | "error">("empty")
-  const [analysisData, setAnalysisData] = useState<any>(null)
-  const [documentId, setDocumentId] = useState<string | null>(null)
+  const [reports, setReports] = useState<ReportRecord[]>([])
+  const [activeReportId, setActiveReportId] = useState<string | null>(null)
+  const pollingRefs = useRef<PollingRegistry>({})
 
-  // Le useEffect pour le polling reste exactement le même, il est déjà correct.
-  useEffect(() => {
-    if (analysisState !== 'processing' || !documentId) return;
+  const startPolling = (reportId: string) => {
+    if (pollingRefs.current[reportId]) return
 
-    const intervalId = setInterval(async () => {
+    const intervalId = window.setInterval(async () => {
       try {
-        const statusResponse = await checkAnalysisStatus(documentId);
-        if (statusResponse.status === 'COMPLETE') {
-          setAnalysisData(statusResponse.data);
-          setAnalysisState("results");
-          clearInterval(intervalId);
+        const statusResponse = await checkAnalysisStatus(reportId)
+        const normalizedStatus = String(statusResponse?.status || "").toUpperCase()
+
+        if (normalizedStatus === "COMPLETE") {
+          const payload = statusResponse?.data ?? null;
+          // Only stop polling if status is COMPLETE AND data is actually present
+          if (!payload || Object.keys(payload).length === 0) {
+            console.log("Analysis complete, but data is empty. Continuing to poll...");
+            return; // Continue polling if data is empty
+          }
+
+          setReports((prev) =>
+            prev.map((report) => {
+              if (report.id !== reportId) return report
+
+              const enrichedPayload = {
+                    ...payload,
+                    fileName: payload.fileName ?? report.name,
+                    uploadedAt: payload.uploadedAt ?? report.uploadedAt,
+                  }
+
+              console.log("Updated Report Object:", {
+                ...report,
+                status: "results",
+                data: enrichedPayload,
+                uploadedAt: enrichedPayload?.uploadedAt ?? report.uploadedAt,
+              });
+              return {
+                ...report,
+                status: "results",
+                data: enrichedPayload,
+                uploadedAt: enrichedPayload?.uploadedAt ?? report.uploadedAt,
+              }
+            })
+          )
+
+          window.clearInterval(intervalId)
+          delete pollingRefs.current[reportId]
+          return
+        }
+
+        if (normalizedStatus === "FAILED" || normalizedStatus === "ERROR") {
+          setReports((prev) =>
+            prev.map((report) =>
+              report.id === reportId
+                ? {
+                    ...report,
+                    status: "error",
+                    error: statusResponse?.error || "Analysis failed.",
+                  }
+                : report
+            )
+          )
+
+          window.clearInterval(intervalId)
+          delete pollingRefs.current[reportId]
         }
       } catch (error) {
-        console.error("Error during polling:", error);
-        setAnalysisState("error");
-        clearInterval(intervalId);
+        console.error("Error during polling:", error)
+        setReports((prev) =>
+          prev.map((report) =>
+            report.id === reportId
+              ? {
+                  ...report,
+                  status: "error",
+                  error: error instanceof Error ? error.message : "Unknown error during analysis.",
+                }
+              : report
+          )
+        )
+
+        window.clearInterval(intervalId)
+        delete pollingRefs.current[reportId]
       }
-    }, 10000); // Poll toutes les 10 secondes
+    }, 10000)
 
-    return () => clearInterval(intervalId);
-  }, [analysisState, documentId]);
+    pollingRefs.current[reportId] = intervalId
+  }
 
-  const handleUpload = async (files: File[]) => {
-    if (files.length === 0) return;
-    const fileToUpload = files[0];
-    setAnalysisState("processing");
+  const initiateAnalysisForFile = async (file: File) => {
+    const uniqueId = `${Date.now()}-${Math.random().toString(16).slice(2)}`
+    const newReport: ReportRecord = {
+      id: uniqueId,
+      name: file.name,
+      uploadedAt: new Date().toISOString(),
+      status: "processing",
+      data: null,
+    }
+    console.log("New Report Object:", newReport)
+
+    setReports((prev) => [newReport, ...prev])
+    setActiveReportId(uniqueId)
 
     try {
-      // --- C'EST LA NOUVELLE LOGIQUE ---
-      // 1. Générer un ID unique basé sur le timestamp, comme dans l'exemple.
-      const uniqueId = String(Date.now());
-      
-      // 2. Envoyer le fichier ET l'ID au backend.
-      await uploadAndStartAnalysis(fileToUpload, uniqueId);
-      
-      // 3. Définir l'ID pour que le polling puisse commencer.
-      setDocumentId(uniqueId); 
-      
+      await uploadAndStartAnalysis(file, uniqueId)
+      startPolling(uniqueId)
     } catch (error) {
-      console.error("Error during upload:", error);
-      alert(error instanceof Error ? error.message : "An unknown error occurred.");
-      setAnalysisState("error");
+      console.error("Error during upload:", error)
+      setReports((prev) =>
+        prev.map((report) =>
+          report.id === uniqueId
+            ? {
+                ...report,
+                status: "error",
+                error: error instanceof Error ? error.message : "Failed to upload file.",
+              }
+            : report
+        )
+      )
+      alert(error instanceof Error ? error.message : "An unknown error occurred.")
+    }
+  }
+
+  const handleUpload = async (files: File[]) => {
+    if (!files.length) return
+
+    for (const file of files) {
+      await initiateAnalysisForFile(file)
     }
   }
 
   const handleNewAnalysis = () => {
-    setAnalysisState("empty")
-    setAnalysisData(null)
-    setDocumentId(null)
+    setActiveReportId(null)
   }
+
+  useEffect(() => {
+    return () => {
+      Object.values(pollingRefs.current).forEach((intervalId) => window.clearInterval(intervalId))
+      pollingRefs.current = {}
+    }
+  }, [])
 
   return (
     <main className="min-h-screen bg-background">
-      <Workspace 
-        state={analysisState} 
-        data={analysisData}
-        onUpload={handleUpload} 
-        onNewAnalysis={handleNewAnalysis} 
+      <Workspace
+        reports={reports}
+        activeReportId={activeReportId}
+        onSelectReport={setActiveReportId}
+        onUpload={handleUpload}
+        onNewAnalysis={handleNewAnalysis}
       />
     </main>
   )
