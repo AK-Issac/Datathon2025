@@ -1,13 +1,11 @@
 // lib/apiService.ts
 
-// --- C'EST LA CORRECTION FINALE ---
-// Nous utilisons une variable d'environnement pour l'URL de l'API.
-// - En production, Vercel fournira la valeur via les "Environment Variables".
-// - En local, si vous n'avez pas de fichier .env.local, il utilisera la valeur par défaut.
-// La valeur par défaut est maintenant l'URL HTTPS de votre backend déployé, ce qui résout le problème de "Mixed Content".
+// --- GESTION PROFESSIONNELLE DE L'URL DE L'API ---
+// Cette ligne est la clé pour que votre application fonctionne en local ET sur Vercel.
+// 1. Elle essaie de lire la variable d'environnement 'NEXT_PUBLIC_API_URL' (que vous configurez sur Vercel).
+// 2. Si elle ne la trouve pas (parce que vous êtes en local), elle utilise 'http://localhost:5000/api' par défaut.
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-// const BASE_URL = 'http://localhost:5000/api';
-
+//const BASE_URL = 'http://localhost:5000/api';
 /**
  * Envoie un fichier ET son ID unique généré par le frontend au backend Flask.
  * @param file Le fichier sélectionné par l'utilisateur.
@@ -15,26 +13,21 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
  * @returns La réponse JSON du serveur, confirmant la réception.
  */
 export async function uploadAndStartAnalysis(file: File, documentId: string) {
-  // FormData est utilisé pour envoyer des fichiers et des données textuelles ensemble.
   const formData = new FormData();
   formData.append('file', file);
   formData.append('documentId', documentId);
 
-  // L'URL construite sera maintenant correcte dans tous les cas :
-  // Ex (local avec backend en ligne): https://flask-backend.../api/upload
-  // Ex (production):                   https://flask-backend.../api/upload
+  // L'URL construite sera correcte dans tous les environnements.
   const response = await fetch(`${BASE_URL}/upload`, {
     method: 'POST',
     body: formData,
   });
 
   if (!response.ok) {
-    // Si la réponse n'est pas OK, on tente de lire l'erreur JSON renvoyée par le backend.
     try {
       const errorData = await response.json();
       throw new Error(errorData.error || 'Failed to upload file.');
     } catch (e) {
-      // Si la réponse n'est même pas du JSON (ex: erreur réseau CORS), on renvoie une erreur générique.
       throw new Error('Failed to upload file. The server may be down, unreachable, or blocking the request.');
     }
   }
@@ -68,9 +61,9 @@ export async function checkAnalysisStatus(documentId: string) {
 }
 
 /**
- * Envoie une question au backend pour obtenir une réponse du RAG de Bedrock.
+ * Envoie une question au backend pour obtenir une réponse du RAG de Bedrock (pour le chatbot).
  * @param question La question de l'utilisateur.
- * @returns Une promesse qui se résout avec la réponse de l'IA, incluant les citations.
+ * @returns Une promesse qui se résout avec la réponse de l'IA.
  */
 export async function askQuestion(question: string) {
   const response = await fetch(`${BASE_URL}/query`, {
@@ -87,6 +80,32 @@ export async function askQuestion(question: string) {
       throw new Error(errorData.error || 'Failed to get an answer.');
     } catch (e) {
       throw new Error('Failed to get an answer. The server may be down or unreachable.');
+    }
+  }
+  
+  return response.json();
+}
+
+/**
+ * Envoie le rapport sommaire au backend pour obtenir une analyse stratégique du LLM "stratège".
+ * @param summaryData L'objet JSON du rapport d'analyse brut.
+ * @returns Une promesse qui se résout avec le JSON de l'analyse stratégique.
+ */
+export async function generateStrategicAnalysis(summaryData: any) {
+  const response = await fetch(`${BASE_URL}/generate_strategy`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(summaryData),
+  });
+
+  if (!response.ok) {
+    try {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to generate strategic analysis.');
+    } catch (e) {
+      throw new Error('Failed to generate strategic analysis. The server may be down or unreachable.');
     }
   }
   

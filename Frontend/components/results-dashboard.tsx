@@ -1,178 +1,145 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
 import CompanyTable from "./company-table"
-import { TrendingUp, TrendingDown } from "lucide-react"
+import { Bot, AlertTriangle, Loader2 } from "lucide-react"
 
-// --- Interface des Props ---
-// 'data' peut être 'any' (pour le JSON d'AWS) ou 'null' pendant le chargement.
-interface ResultsDashboardProps {
-  data: any
-  onCompanySelect: (company: any) => void
-}
-
-// --- NOUVEAU: Composant Skeleton Loader ---
-// Affiche une version "fantôme" de l'interface pendant que les données chargent.
-function DashboardSkeleton() {
-  return (
-    <div className="space-y-6 p-6 animate-pulse">
-      {/* Header Skeleton */}
-      <div className="space-y-3">
-        <div className="h-8 w-3/4 rounded-lg bg-muted" />
-        <div className="h-4 w-1/2 rounded-lg bg-muted" />
+// --- SOUS-COMPOSANT POUR L'AFFICHAGE DE LA STRATÉGIE ---
+// Ce composant interne gère le formatage de la réponse du LLM stratège.
+function StrategyAnalysis({ strategy }: { strategy: any }) {
+  // Gère l'état de chargement (quand les données ne sont pas encore arrivées)
+  if (!strategy) {
+    return (
+      <div className="flex items-center gap-3 text-sm text-muted-foreground p-4">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Génération de l'analyse stratégique par l'IA...
       </div>
-
-      {/* Score Card Skeleton */}
-      <div className="rounded-lg bg-muted h-36 w-full" />
-      
-      {/* Grid Skeleton */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="rounded-lg bg-muted h-60 w-full" />
-        <div className="rounded-lg bg-muted h-60 w-full" />
-        <div className="rounded-lg bg-muted h-60 w-full" />
-      </div>
-
-      {/* Table Skeleton */}
-      <div className="rounded-lg bg-muted h-96 w-full" />
-    </div>
-  )
-}
-
-// --- Composant Principal du Tableau de Bord ---
-export default function ResultsDashboard({ data, onCompanySelect }: ResultsDashboardProps) {
-  
-  // --- 1. GESTION DE L'ÉTAT DE CHARGEMENT ---
-  // Si 'data' est null (parce que le polling n'est pas terminé),
-  // afficher le skeleton loader au lieu de planter.
-  if (!data) {
-    return <DashboardSkeleton />;
+    );
   }
 
-  // --- 2. DÉSTRUCTURATION SÉCURISÉE DES DONNÉES ---
-  // On utilise des valeurs par défaut (ex: '|| []') pour s'assurer que le composant
-  // ne plantera jamais, même si une partie des données est manquante dans la réponse d'AWS.
-  const impactScore = data.portfolio_impact_score || 0;
-  const topWinners = data.top_winners || [];
-  const topLosers = data.top_losers || [];
-  const sectorData = data.sector_distribution || [];
-  const allCompaniesData = data.all_companies || [...topWinners, ...topLosers]; // Fallback si 'all_companies' n'existe pas
+  // Gère l'état d'erreur (si l'appel au LLM a échoué)
+  if (strategy.error) {
+     return (
+      <div className="flex items-center gap-3 text-sm text-red-500 p-4">
+        <AlertTriangle className="h-4 w-4" />
+        {strategy.error}
+      </div>
+    );
+  }
 
-  // Adapter les données de secteur pour le graphique (couleurs, etc.)
-  const chartSectorData = sectorData.map((sector: any, index: number) => ({
-    ...sector,
-    fill: `hsl(var(--chart-${index + 1}))`
-  }));
+  // Fonction pour colorer le niveau de risque
+  const getRiskColor = (level: string) => {
+    if (level?.toLowerCase().includes('élevé')) return 'text-red-500';
+    if (level?.toLowerCase().includes('modéré')) return 'text-yellow-500';
+    return 'text-green-500';
+  }
 
+  // Affiche les données si la génération a réussi
   return (
-    <div className="space-y-6 p-6">
-      {/* Section d'En-tête */}
-      <div className="space-y-2">
-        <h2 className="text-3xl font-bold">Analysis Results</h2>
-        <p className="text-muted-foreground">
-          Document: {data.fileName || "N/A"} • Processed on {new Date(data.uploadedAt || Date.now()).toLocaleDateString()}
-        </p>
-      </div>
-
-      {/* Score d'Impact Global */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">Portfolio Impact Score</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-baseline gap-2">
-            <span className={`text-4xl font-bold ${impactScore > 0 ? "text-green-500" : "text-red-500"}`}>{impactScore.toFixed(2)}</span>
+    <div className="space-y-6 p-4">
+      {strategy.scenarios && (
+        <section>
+          <h3 className="text-base font-semibold mb-2">Scénarios Simulés</h3>
+          <div className="grid md:grid-cols-2 gap-4">
+            {strategy.scenarios.map((s: any, i: number) => (
+              <Card key={i} className={s.type === 'pessimiste' ? 'border-red-500/50' : 'border-green-500/50'}>
+                <CardHeader className="pb-2 pt-4"><CardTitle className="text-sm capitalize">{s.type}</CardTitle></CardHeader>
+                <CardContent className="text-sm space-y-2"><p>{s.description}</p><p className="text-xs text-muted-foreground"><strong>Impact Portefeuille:</strong> {s.impact_portefeuille}</p></CardContent>
+              </Card>
+            ))}
           </div>
-          <p className="mt-2 text-sm text-muted-foreground">
-            This score reflects the estimated overall impact of the regulation on the S&P 500 portfolio.
-          </p>
-        </CardContent>
-      </Card>
+        </section>
+      )}
 
-      {/* Grille des Résumés & Graphiques */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Top Gagnants */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <TrendingUp className="h-5 w-5 text-green-600" />
-              Top Winners
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {topWinners.length > 0 ? topWinners.map((item: any) => (
-              <button
-                key={item.ticker}
-                onClick={() => onCompanySelect(item)}
-                className="w-full space-y-1 rounded-lg p-2 text-left hover:bg-muted"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold">{item.ticker}</span>
-                  <span className="text-sm font-semibold text-green-600">+{item.impact.toFixed(1)}</span>
-                </div>
-                <div className="text-xs text-muted-foreground">{item.company}</div>
-              </button>
-            )) : <p className="text-sm text-muted-foreground">No significant positive impacts found.</p>}
-          </CardContent>
-        </Card>
+      {strategy.risk_assessment && (
+        <section>
+          <h3 className="text-base font-semibold mb-2">Évaluation des Risques</h3>
+          <div className="space-y-2">
+            {strategy.risk_assessment.map((r: any, i: number) => (
+              <div key={i} className="flex justify-between items-center bg-muted/50 p-3 rounded-lg">
+                <div className="space-y-1"><p className="font-medium text-sm">{r.domaine}</p><p className="text-xs text-muted-foreground">Secteurs: {r.secteurs_affectes}</p></div>
+                <span className={`font-bold text-sm capitalize ${getRiskColor(r.niveau)}`}>{r.niveau}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
-        {/* Top Perdants */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <TrendingDown className="h-5 w-5 text-red-600" />
-              Top Losers
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {topLosers.length > 0 ? topLosers.map((item: any) => (
-              <button
-                key={item.ticker}
-                onClick={() => onCompanySelect(item)}
-                className="w-full space-y-1 rounded-lg p-2 text-left hover:bg-muted"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold">{item.ticker}</span>
-                  <span className="text-sm font-semibold text-red-600">{item.impact.toFixed(1)}</span>
-                </div>
-                <div className="text-xs text-muted-foreground">{item.company}</div>
-              </button>
-            )) : <p className="text-sm text-muted-foreground">No significant negative impacts found.</p>}
-          </CardContent>
-        </Card>
-
-        {/* Risque par Secteur */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Sector Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              {chartSectorData.length > 0 ? (
-                <PieChart>
-                  <Pie
-                    data={chartSectorData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {chartSectorData.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
-                </PieChart>
-              ) : <div className="flex items-center justify-center h-full text-sm text-muted-foreground">No sector data available.</div>}
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tableau Complet des Entreprises */}
-      <CompanyTable companies={allCompaniesData} onCompanySelect={onCompanySelect} />
+      {strategy.recommended_actions && (
+        <section>
+          <h3 className="text-base font-semibold mb-2">Actions Recommandées</h3>
+          <div className="space-y-2">
+            {strategy.recommended_actions.map((a: any, i: number) => (
+              <Card key={i}><CardContent className="p-4 text-sm"><p className="font-semibold mb-1">Pour: {a.entreprises_concernees}</p><p className="text-muted-foreground">{a.actions_proposees}</p></CardContent></Card>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
+}
+
+
+// --- COMPOSANT PRINCIPAL DU TABLEAU DE BORD ---
+interface ResultsDashboardProps {
+  summaryData: any;
+  strategyData: any;
+  onCompanySelect: (company: any) => void;
+}
+
+export default function ResultsDashboard({ summaryData, strategyData, onCompanySelect }: ResultsDashboardProps) {
+  // Le composant attend que `summaryData` soit disponible pour s'afficher.
+  // La logique de chargement initial est gérée par le composant parent `workspace.tsx`.
+  if (!summaryData) {
+    return null; // ou un skeleton loader si on préfère
+  }
+
+  // Utiliser des valeurs par défaut pour éviter les erreurs si les données sont partielles
+  const companies = summaryData.all_companies || summaryData.key_risks_actionable || [];
+
+  return (
+    <ScrollArea className="h-full">
+      <div className="p-6 space-y-6">
+        
+        {/* 1. CARTE DU RAPPORT BRUT (SUMMARY) */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Rapport d'Analyse Brut</CardTitle>
+            <p className="text-sm text-muted-foreground">Ceci est le résultat factuel et structuré de l'analyse du document par l'IA.</p>
+          </CardHeader>
+          <CardContent>
+            <div className="max-h-80 overflow-y-auto bg-muted/50 p-4 rounded-lg">
+              <pre className="text-xs whitespace-pre-wrap">
+                {JSON.stringify(summaryData, null, 2)}
+              </pre>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Separator />
+
+        {/* 2. CARTE DE L'ANALYSE STRATÉGIQUE DE L'IA */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bot className="h-5 w-5 text-primary" />
+              Analyse Stratégique de l'IA
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">Ceci est l'interprétation et les recommandations générées par le LLM stratège.</p>
+          </CardHeader>
+          <CardContent>
+            <StrategyAnalysis strategy={strategyData} />
+          </CardContent>
+        </Card>
+        
+        <Separator />
+
+        {/* 3. TABLEAU DES ENTREPRISES AFFECTÉES */}
+        <CompanyTable companies={companies} onCompanySelect={onCompanySelect} />
+
+      </div>
+    </ScrollArea>
+  );
 }

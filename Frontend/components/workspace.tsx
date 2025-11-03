@@ -8,106 +8,109 @@ import FileListSidebar from "./file-list-sidebar"
 import ChatAssistant from "./chat-assistant"
 import UploadModal from "./upload-modal"
 import ProcessingUI from "./processing-ui"
-import ResultsDashboard from "./results-dashboard"
 import EvidenceModal from "./evidence-modal"
+import ResultsDashboard from "./results-dashboard" // Le nouveau composant unifié
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable"
-import { ScrollArea } from "@/components/ui/scroll-area" // <-- Import ScrollArea
-import { Upload } from "lucide-react"
+import { Upload, Bot } from "lucide-react"
 
 interface WorkspaceProps {
-  state: "empty" | "processing" | "results" | "error"
-  data: any
-  onUpload: (files: File[]) => void
-  onNewAnalysis: () => void
+  state: "empty" | "processing" | "generating_strategy" | "results" | "error";
+  summaryData: any;
+  strategyData: any;
+  onUpload: (files: File[]) => void;
+  onNewAnalysis: () => void;
 }
 
-// A new sub-component for the initial, empty state view
+// Sous-composant pour l'état initial (ne change pas)
 function InitialUploadZone({ onUploadClick }: { onUploadClick: () => void }) {
   return (
     <div className="flex h-full flex-col items-center justify-center bg-background p-12 text-center">
       <Upload className="h-12 w-12 text-muted-foreground mb-4" />
-      <h2 className="text-2xl font-semibold text-foreground mb-2">Start a New Analysis</h2>
-      <p className="text-muted-foreground mb-6">Upload regulatory documents to begin.</p>
+      <h2 className="text-2xl font-semibold text-foreground mb-2">Commencer une Nouvelle Analyse</h2>
+      <p className="text-muted-foreground mb-6">Uploadez un document réglementaire pour lancer le processus.</p>
       <button
         onClick={onUploadClick}
         className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
       >
         <Upload className="h-5 w-5" />
-        Upload Documents
+        Uploader un Document
       </button>
     </div>
   );
 }
 
-export default function Workspace({ state, data, onUpload, onNewAnalysis }: WorkspaceProps) {
+// Sous-composant pour la génération de stratégie (ne change pas)
+function GeneratingStrategyUI() {
+  return (
+    <div className="flex h-full flex-col items-center justify-center bg-background p-12 text-center">
+      <Bot className="h-12 w-12 text-primary mb-4 animate-pulse" />
+      <h2 className="text-2xl font-semibold text-foreground mb-2">Génération de la Stratégie</h2>
+      <p className="text-muted-foreground max-w-md">Le rapport d'analyse brut est prêt. L'IA de S3rpent formule maintenant des scénarios et des recommandations d'ajustement pour votre portefeuille...</p>
+    </div>
+  );
+}
+
+export default function Workspace({ state, summaryData, strategyData, onUpload, onNewAnalysis }: WorkspaceProps) {
   const [activeFile, setActiveFile] = useState<any>(null)
-  const [pinnedSnippets, setPinnedSnippets] = useState<any[]>([])
-  const [chatContext, setChatContext] = useState<string>("")
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [evidenceModalOpen, setEvidenceModalOpen] = useState(false)
   const [selectedCompany, setSelectedCompany] = useState<any>(null)
-
-  const handlePinSnippet = (snippet: any) => {
-    setPinnedSnippets((prev) => {
-      const exists = prev.find((s) => s.id === snippet.id)
-      return exists ? prev.filter((s) => s.id !== snippet.id) : [...prev, snippet]
-    })
-  }
-
-  const handleAddToChatContext = (text: string) => setChatContext(text)
 
   const handleCompanySelect = (company: any) => {
     setSelectedCompany(company)
     setEvidenceModalOpen(true)
   }
 
-  // Renders the content of the central panel based on the current state
+  // Décide dynamiquement quoi afficher dans le panneau central
   const renderMainPanel = () => {
     switch(state) {
       case "processing":
+      case "generating_strategy": // On peut montrer l'UI de processing pendant la génération de stratégie aussi
         return <ProcessingUI />;
       case "results":
-        return <ResultsDashboard data={data} onCompanySelect={handleCompanySelect} />;
+        return <ResultsDashboard 
+                  summaryData={summaryData} 
+                  strategyData={strategyData}
+                  onCompanySelect={handleCompanySelect}
+               />;
       case "error":
-        // You can create a more detailed error component here
-        return <div className="p-8 text-center text-red-500">Analysis Failed. Please start a new analysis.</div>;
+        return <div className="p-8 text-center text-red-500">L'analyse a échoué. Veuillez réessayer.</div>;
       case "empty":
       default:
         return <InitialUploadZone onUploadClick={() => setUploadModalOpen(true)} />;
     }
   }
 
-  const mockFiles = [
-    { id: "1", name: "EU_AI_Regulation_2024.pdf", type: "pdf", timestamp: new Date(Date.now() - 3600000), status: "processed", evidenceCount: 12, importance: 9.5 },
-    { id: "2", name: "White_House_Executive_Order.pdf", type: "pdf", timestamp: new Date(Date.now() - 7200000), status: state === 'processing' ? 'processing' : 'processed', evidenceCount: 0, importance: 8.2 },
-  ];
+  const mockFiles = [ /* Vos données mockées pour la barre de gauche */ ];
 
   return (
     <div className="flex h-screen flex-col">
       <TopBar onNewAnalysis={onNewAnalysis} onUpload={() => setUploadModalOpen(true)} state={state} />
       <ResizablePanelGroup direction="horizontal" className="flex-1">
+        {/* Panneau de gauche (Navigation) */}
         <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
           <FileListSidebar files={mockFiles} activeFile={activeFile} onFileSelect={setActiveFile} onUpload={onUpload} />
         </ResizablePanel>
 
         <ResizableHandle />
 
+        {/* Panneau central (Contenu principal) */}
         <ResizablePanel defaultSize={50} minSize={30}>
-          <ScrollArea className="h-full"> {/* <-- WRAP IN SCROLL AREA */}
             {renderMainPanel()}
-          </ScrollArea>
         </ResizablePanel>
 
         <ResizableHandle />
 
+        {/* Panneau de droite (Toujours le Chatbot RAG) */}
         <ResizablePanel defaultSize={30} minSize={20} maxSize={40}>
           <ChatAssistant
             activeFile={activeFile}
-            pinnedSnippets={pinnedSnippets}
-            chatContext={chatContext}
-            onRemoveSnippet={handlePinSnippet}
+            pinnedSnippets={[]}
+            chatContext={""}
+            onRemoveSnippet={() => {}}
           />
         </ResizablePanel>
+
       </ResizablePanelGroup>
       <UploadModal open={uploadModalOpen} onOpenChange={setUploadModalOpen} onUpload={onUpload} />
       {selectedCompany && (

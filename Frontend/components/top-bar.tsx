@@ -1,3 +1,5 @@
+// components/top-bar.tsx
+
 "use client"
 
 import { Button } from "@/components/ui/button"
@@ -15,7 +17,7 @@ export default function TopBar({ onNewAnalysis, onUpload, state }: TopBarProps) 
       <div className="flex h-16 items-center justify-between px-6">
         <div className="flex items-center gap-3">
           <BarChart3 className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-semibold">Aura</h1>
+          <h1 className="text-xl font-semibold">S3rpent</h1>
           <span className="text-xs text-muted-foreground">Regulatory Intelligence Platform</span>
         </div>
         <div className="flex items-center gap-2">

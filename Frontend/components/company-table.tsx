@@ -1,3 +1,5 @@
+// components/company-table.tsx
+
 "use client"
 
 import { useState } from "react"
@@ -14,22 +16,28 @@ export default function CompanyTable({ companies, onCompanySelect }: CompanyTabl
   const [searchTerm, setSearchTerm] = useState("")
   const [sortBy, setSortBy] = useState<"impact" | "ticker">("impact")
 
-  const filtered = companies
+  // S'assurer que 'companies' est toujours un tableau
+  const safeCompanies = Array.isArray(companies) ? companies : [];
+
+  const filtered = safeCompanies
     .filter(
       (c) =>
-        c.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.company.toLowerCase().includes(searchTerm.toLowerCase()),
+        // --- C'EST LA CORRECTION DE SÉCURITÉ ---
+        // On ajoute '?.' pour dire "n'essaie de faire toLowerCase que si c.ticker existe".
+        c?.ticker?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c?.company?.toLowerCase().includes(searchTerm.toLowerCase()),
     )
     .sort((a, b) => {
       if (sortBy === "impact") {
-        return b.impact - a.impact
+        return (b.impact || 0) - (a.impact || 0); // Gérer le cas où 'impact' est manquant
       }
-      return a.ticker.localeCompare(b.ticker)
+      return (a.ticker || "").localeCompare(b.ticker || ""); // Gérer le cas où 'ticker' est manquant
     })
 
   return (
     <Card>
       <CardHeader>
+        {/* ... (le reste du composant ne change pas) ... */}
         <div className="flex items-center justify-between">
           <CardTitle>Affected Companies</CardTitle>
           <div className="relative w-64">
@@ -63,13 +71,13 @@ export default function CompanyTable({ companies, onCompanySelect }: CompanyTabl
             <tbody>
               {filtered.map((company) => (
                 <tr key={company.ticker} className="border-b border-border hover:bg-muted">
-                  <td className="px-4 py-3 font-semibold">{company.ticker}</td>
-                  <td className="px-4 py-3">{company.company}</td>
-                  <td className={`px-4 py-3 font-semibold ${company.impact > 0 ? "text-green-600" : "text-red-600"}`}>
-                    {company.impact > 0 ? "+" : ""}
-                    {company.impact.toFixed(1)}
+                  <td className="px-4 py-3 font-semibold">{company.ticker || 'N/A'}</td>
+                  <td className="px-4 py-3">{company.company || 'N/A'}</td>
+                  <td className={`px-4 py-3 font-semibold ${(company.impact || 0) > 0 ? "text-green-600" : "text-red-600"}`}>
+                    {(company.impact || 0) > 0 ? "+" : ""}
+                    {(company.impact || 0).toFixed(1)}
                   </td>
-                  <td className="px-4 py-3">{company.change}</td>
+                  <td className="px-4 py-3">{company.change || 'N/A'}</td>
                   <td className="px-4 py-3">
                     <button onClick={() => onCompanySelect(company)} className="text-sm text-primary hover:underline">
                       View Evidence
