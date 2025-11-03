@@ -26,4 +26,8 @@ def create_app():
     def health():
         return "OK", 200
 
+<<<<<<< HEAD
     return app
+=======
+    return app
+>>>>>>> c80425ee23b1bd01385a5d6d16a8b019c4fab1cd
